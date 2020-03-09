@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<!--
+Client side HTML for the chat application assignment
+Manuel Rodriguez
+SENG 513 Assignment 3
+-->
+<html>
+<head>
+    <title>Web Chat</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
+    <script src="http://code.jquery.com/jquery-latest.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/js-cookie@beta/dist/js.cookie.min.js"></script>
+    <style>
+        body
+        {
+            margin-top: 50px;
+        }
+
+        #chat
+        {
+            height: 50vh;
+            overflow-y: auto;
+            display: flex;
+            flex-flow: column nowrap;          
+        }
+
+        #Msg
+        {
+            margin-top: auto !important;
+        }
+
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <!-- Area to inform the user who they are-->
+        <div id="userFormArea" class="row">
+            <div class="col-md-12">
+            </div>
+        </div>
+
+        <div class="row" id="messageArea">
+            <!-- side bar for users-->
+            <div class="col-md-4">
+                <div class="well">
+                    <h3>Online Users</h3>
+                    <ul class="list-group" id="users"></ul>
+                </div>
+            </div>
+            <!-- main chat area -->
+            <div class="col-md-8">
+                <div id="nameDisplay"></div>
+                <div class="chat" id="chat">
+                    
+                </div>
+
+                <form id="messageForm">
+                    <div class="form-group">
+                        <label>Enter Message</label>
+                        <textarea class="form-control" id="message">
+                        </textarea>
+                        <br />
+                        <input type="submit" id="submitMessage" class="btn btn-primary" value="Send Message"/>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let lastDisconnected = "";
+
+        $(function(){
+            let socket = io.connect();
+            let $messageForm = $('#messageForm');
+            let $message = $('#message');
+            let $messageArea = $('#messageArea');
+            let $chat = $('#chat');
+
+            let $userForm = $('#userForm');
+            let $userFormArea = $('#userFormArea');
+            let $users = $('#users');
+            let $username = $('#username');
+            let $nameDisplay = $('#nameDisplay');
+
+            
+
+            let beginName = "";
+
+            let lastName = Cookies.get('cookieName');
+            
+
+            if(lastName != undefined)
+            {
+                beginName = lastName;
+                console.log('I membeh');
+                socket.emit('new user', beginName);
+            }
+            else
+            {
+                let userSuffix = Math.floor(Math.random() * 3000);
+                beginName = "User" + userSuffix;
+                console.log('I forgot');
+                socket.emit('new user', beginName);
+            }
+
+           
+
+
+            Cookies.set('cookieName', beginName);
+
+            let currentUser = Cookies.get('cookieName');
+
+            $messageForm.submit(function(e){
+                e.preventDefault();
+                socket.emit('send message', $message.val());
+                $message.val('');
+            });
+
+            socket.on('send message', function(msg, time, name, color){
+                console.log(currentUser);
+                if(currentUser === name)
+                {
+                $chat.append(
+                    '<div class="well" id="Msg">(' + time + ') <span style = " color: ' + color + '">' + name + ": </span><b>" + msg + '</div>'
+                );
+                }
+                else
+                {
+                    $chat.append(
+                    '<div class="well" id="Msg">(' + time + ') <span style = " color: ' + color + '">' + name + ": </span>" + msg + '</div>'
+                );
+                }
+                $chat.scrollTop($chat[0].scrollHeight);
+            });
+
+            socket.on('change name', function(name){
+                Cookies.set('cookieName', name);
+                $nameDisplay.html("<h2>You are " + name + "</h2>");
+                currentUser = Cookies.get('cookieName');
+                Cookies.set('cookieName', currentUser);
+            });
+
+
+            socket.on('get users', function(data){
+                html = '';
+                for(i = 0; i < data.length; i++)
+                {
+                    html += '<li class="list-group-item" id="useritem">' + data[i] + '</li>';
+                }
+                $users.html(html);
+            });
+
+            socket.on('load messages', function(messages){
+                for(i = 0; i < messages.length; i++)
+                {
+                    $chat.append(messages[i]);
+                }
+            });
+        });
+
+    </script>
+</body>
+
+</html>
